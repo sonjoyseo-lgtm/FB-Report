@@ -1,0 +1,38 @@
+{
+  "entities": {
+    "FacebookReport": {
+      "title": "FacebookReport",
+      "description": "A user-reported harmful or inappropriate Facebook post",
+      "type": "object",
+      "properties": {
+        "facebookLink": {
+          "type": "string",
+          "description": "The URL link to the reported Facebook post"
+        },
+        "category": {
+          "type": "string",
+          "description": "The custom category of the violation manually entered by the user"
+        },
+        "description": {
+          "type": "string",
+          "description": "Additional notes, details, or description about why the post is inappropriate"
+        },
+        "timestamp": {
+          "type": "integer",
+          "description": "The millisecond timestamp when the report was submitted"
+        },
+        "clickCount": {
+          "type": "integer",
+          "description": "The number of users who clicked the reported post link"
+        }
+      },
+      "required": ["facebookLink", "category", "description", "timestamp", "clickCount"]
+    }
+  },
+  "firestore": {
+    "/reports/{reportId}": {
+      "schema": "FacebookReport",
+      "description": "Collection of bad Facebook posts reported by users"
+    }
+  }
+}
