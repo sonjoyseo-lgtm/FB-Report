@@ -680,8 +680,8 @@ export default function ReportDashboard({ reports, isAdmin, onRefresh, isRefresh
                 <BarChart3 className="w-4 h-4 text-emerald-500" />
                 {t.analyticsTitle}
               </h4>
-              <div className="h-56 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-56 w-full min-w-0">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                   <BarChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
                     <XAxis 
                       dataKey="name" 

@@ -12,15 +12,15 @@ import {
   increment
 } from "firebase/firestore";
 
-// Config parsed from firebase-applet-config.json
+// Config parsed and loaded from environment variables (.env / production env)
 const firebaseConfig = {
-  projectId: "gen-lang-client-0570000409",
-  appId: "1:780744504480:web:013eef83defd0b7f6fc5c5",
-  apiKey: "AIzaSyBwkHMLVprMXheNWa2IuJmFg-a7hdtTn8k",
-  authDomain: "gen-lang-client-0570000409.firebaseapp.com",
-  firestoreDatabaseId: "ai-studio-acce36f7-c9c1-4ce7-9023-6df2bdcf61c2",
-  storageBucket: "gen-lang-client-0570000409.firebasestorage.app",
-  messagingSenderId: "780744504480"
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID
 };
 
 const app = initializeApp(firebaseConfig);
