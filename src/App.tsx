@@ -48,8 +48,8 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
 
-  // Countdown timer to regular 2-minute updates
-  const [secondsUntilUpdate, setSecondsUntilUpdate] = useState(120);
+  // Timestamp trigger for resetting the isolated background countdown timer
+  const [lastFetched, setLastFetched] = useState<number>(Date.now());
 
   // Custom admin email state variables
   const [adminEmails, setAdminEmails] = useState<string[]>([]);
@@ -73,28 +73,13 @@ export default function App() {
     } finally {
       setLoading(false);
       setIsRefreshing(false);
-      setSecondsUntilUpdate(120); // Reset the 2 minute polling countdown
+      setLastFetched(Date.now()); // Reset the background polling countdown via trigger
     }
   };
 
   // 1. On Mount: Fetch initial data
   useEffect(() => {
     loadReportsData();
-  }, []);
-
-  // 2. Continuous Background Polling: updates every 2 minutes (120 seconds)
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setSecondsUntilUpdate((prev) => {
-        if (prev <= 1) {
-          loadReportsData(true); // background silent reload
-          return 120;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
   }, []);
 
   // Admin login flow
@@ -164,23 +149,6 @@ export default function App() {
 
   const handleLogout = () => {
     setIsAdmin(false);
-  };
-
-  // Localized digit/number converter for UI
-  const formatNumber = (num: number | string): string => {
-    if (lang === "en") return num.toString();
-    const banglaDigits: { [key: string]: string } = {
-      '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
-    };
-    return num.toString().split('').map(digit => banglaDigits[digit] || digit).join('');
-  };
-
-  // Formatter for auto refresh timer
-  const formatCountdown = (totalSecs: number): string => {
-    const mins = Math.floor(totalSecs / 60);
-    const secs = totalSecs % 60;
-    const paddedSecs = String(secs).padStart(2, '0');
-    return `${formatNumber(mins)}:${formatNumber(paddedSecs)} ${t.secondsText}`;
   };
 
   return (
@@ -435,15 +403,12 @@ export default function App() {
                   </p>
                 </div>
               </div>
-              <div className="flex flex-col items-start md:items-end justify-center shrink-0 bg-white/40 md:bg-transparent p-3 md:p-0 rounded-xl border border-dotted border-slate-200 md:border-0">
-                <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
-                  <Database className="w-3.5 h-3.5 text-emerald-500" />
-                  {t.autoRefreshText}
-                </div>
-                <span className="text-[12px] font-black text-emerald-600 font-mono mt-0.5">
-                  {formatCountdown(secondsUntilUpdate)}
-                </span>
-              </div>
+              <CountdownTimer 
+                onTriggerRefresh={() => loadReportsData(true)} 
+                resetTrigger={lastFetched} 
+                lang={lang} 
+                t={t} 
+              />
             </div>
           </>
         )}
@@ -564,6 +529,67 @@ export default function App() {
         )}
       </AnimatePresence>
 
+    </div>
+  );
+}
+
+interface CountdownTimerProps {
+  onTriggerRefresh: () => void;
+  resetTrigger: number;
+  lang: "bn" | "en";
+  t: any;
+}
+
+// Highly optimized, isolated countdown timer component that prevents full page re-renders every second
+function CountdownTimer({ onTriggerRefresh, resetTrigger, lang, t }: CountdownTimerProps) {
+  const [secondsUntilUpdate, setSecondsUntilUpdate] = useState(120);
+
+  // Localized digit/number converter for UI
+  const formatNumber = (num: number | string): string => {
+    if (lang === "en") return num.toString();
+    const banglaDigits: { [key: string]: string } = {
+      '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
+    };
+    return num.toString().split('').map(digit => banglaDigits[digit] || digit).join('');
+  };
+
+  // Formatter for auto refresh timer
+  const formatCountdown = (totalSecs: number): string => {
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    const paddedSecs = String(secs).padStart(2, '0');
+    return `${formatNumber(mins)}:${formatNumber(paddedSecs)} ${t.secondsText}`;
+  };
+
+  // Reset the timer when parent reports load/update finishes
+  useEffect(() => {
+    setSecondsUntilUpdate(120);
+  }, [resetTrigger]);
+
+  // Handle continuous background ticking with single-instance interval state
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSecondsUntilUpdate((prev) => {
+        if (prev <= 1) {
+          onTriggerRefresh(); // Trigger background silent updates
+          return 120;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [onTriggerRefresh]);
+
+  return (
+    <div className="flex flex-col items-start md:items-end justify-center shrink-0 bg-white/40 md:bg-transparent p-3 md:p-0 rounded-xl border border-dotted border-slate-200 md:border-0 font-sans">
+      <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
+        <Database className="w-3.5 h-3.5 text-emerald-500" />
+        {t.autoRefreshText}
+      </div>
+      <span className="text-[12px] font-black text-emerald-600 font-mono mt-0.5">
+        {formatCountdown(secondsUntilUpdate)}
+      </span>
     </div>
   );
 }
