@@ -253,30 +253,6 @@ export default function App() {
       {/* 3. Main Layout Area */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
         
-        {/* Banner with explanations and automated interval countdown representation */}
-        <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-slate-500/0 rounded-2xl border border-emerald-500/10 p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3.5">
-            <span className="p-2.5 bg-emerald-100 rounded-xl text-emerald-600 mt-0.5 shrink-0">
-              <Info className="w-5 h-5" />
-            </span>
-            <div className="space-y-1">
-              <h2 className="text-sm font-black text-slate-800">{t.howItWorksTitle}</h2>
-              <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
-                {t.howItWorksDesc}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col items-start md:items-end justify-center shrink-0 bg-white/40 md:bg-transparent p-3 md:p-0 rounded-xl border border-dotted border-slate-200 md:border-0">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
-              <Database className="w-3.5 h-3.5 text-emerald-500" />
-              {t.autoRefreshText}
-            </div>
-            <span className="text-[12px] font-black text-emerald-600 font-mono mt-0.5">
-              {formatCountdown(secondsUntilUpdate)}
-            </span>
-          </div>
-        </div>
-
         {/* Real-time Content Loading indicator */}
         {loading ? (
           <div className="py-24 flex flex-col items-center justify-center space-y-4">
@@ -289,161 +265,187 @@ export default function App() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
-            {/* Split Section 1: Form Column (Span 5) - INFORMATION INPUT SYSTEM with thick left border */}
-            <div className="lg:col-span-5 space-y-6">
-              {/* ReportForm automatically updates states right away on success submit! */}
-              <ReportForm reports={reports} lang={lang} onSuccessSubmit={() => loadReportsData(true)} />
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               
-              {/* Admin-only email authorization panel */}
-              {isAdmin && (
-                <div className="bg-white rounded-2xl p-6 shadow-xs border border-slate-200/80 space-y-4">
-                  <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
-                    <div className="p-2 bg-slate-900 text-white rounded-lg">
-                      <Users className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-800 leading-none">
-                        {t.adminManageSectionTitle}
-                      </h3>
-                      <p className="text-[10px] text-slate-400 mt-1">
-                        {t.adminManageSectionDesc}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Add action form */}
-                  <form onSubmit={handleAddAdminEmail} className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Mail className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
-                      <input
-                        type="email"
-                        required
-                        placeholder={t.adminManageEmailPlaceholder}
-                        value={newAdminEmail}
-                        onChange={(e) => setNewAdminEmail(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-xs text-slate-800"
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      className="bg-slate-950 hover:bg-slate-800 text-white p-2.5 rounded-xl transition cursor-pointer text-xs font-bold shrink-0 flex items-center justify-center"
-                      title={t.adminManageAddBtn}
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </form>
-
-                  {/* Feedback alerts */}
-                  {adminActionError && (
-                    <div className="p-2 bg-red-50 text-red-600 text-[11px] rounded-lg">
-                      {adminActionError}
-                    </div>
-                  )}
-                  {adminActionSuccess && (
-                    <div className="p-2 bg-emerald-50 text-emerald-600 text-[11px] rounded-lg flex items-center gap-1">
-                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                      <span>{adminActionSuccess}</span>
-                    </div>
-                  )}
-
-                  {/* Authorized administrators list */}
-                  <div className="space-y-2 pt-1">
-                    <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-wider">
-                      {t.adminManageListTitle}
-                    </h4>
-
-                    <div className="max-h-52 overflow-y-auto pr-1 space-y-1.5 custom-scrollbar">
-                      {/* 1. Chief Administrator (cannot delete) */}
-                      <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-                          <span className="font-semibold text-slate-700">sonjoyseo@gmail.com</span>
-                        </div>
-                        <span className="text-[9px] font-bold text-slate-400 bg-slate-200/50 px-2 py-0.5 rounded-sm uppercase tracking-tight">
-                          {t.adminManageChiefLabel}
-                        </span>
+              {/* Split Section 1: Form Column (Span 5) - INFORMATION INPUT SYSTEM with thick left border */}
+              <div className="lg:col-span-5 space-y-6">
+                {/* ReportForm automatically updates states right away on success submit! */}
+                <ReportForm reports={reports} lang={lang} onSuccessSubmit={() => loadReportsData(true)} />
+                
+                {/* Admin-only email authorization panel */}
+                {isAdmin && (
+                  <div className="bg-white rounded-2xl p-6 shadow-xs border border-slate-200/80 space-y-4">
+                    <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
+                      <div className="p-2 bg-slate-900 text-white rounded-lg">
+                        <Users className="w-4 h-4" />
                       </div>
-
-                      {/* 2. Secondary Custom Admins */}
-                      {adminEmails.filter(email => email !== "sonjoyseo@gmail.com").map((email) => (
-                        <div key={email} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100 text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                            <span className="font-medium text-slate-600 truncate max-w-[130px] sm:max-w-[200px]" title={email}>{email}</span>
-                          </div>
-                          
-                          {confirmRevokeEmail === email ? (
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteAdminEmail(email)}
-                                className="px-2 py-0.5 text-[9px] font-bold bg-rose-600 hover:bg-rose-750 text-white rounded-md transition cursor-pointer"
-                              >
-                                {lang === "bn" ? "নিশ্চিত" : "Revoke"}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setConfirmRevokeEmail(null)}
-                                className="px-1.5 py-0.5 text-[9px] font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md transition cursor-pointer"
-                              >
-                                {lang === "bn" ? "বাদ" : "X"}
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setConfirmRevokeEmail(email)}
-                              className="p-1 rounded-md text-slate-400 hover:text-red-500 hover:bg-slate-100 transition cursor-pointer shrink-0"
-                              title={t.adminManageRevokeBtn}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      ))}
-
-                      {adminEmails.filter(email => email !== "sonjoyseo@gmail.com").length === 0 && (
-                        <p className="text-[10px] text-slate-400 text-center py-2 italic font-medium">
-                          {t.adminManageEmptyList}
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-800 leading-none">
+                          {t.adminManageSectionTitle}
+                        </h3>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          {t.adminManageSectionDesc}
                         </p>
-                      )}
+                      </div>
+                    </div>
+
+                    {/* Add action form */}
+                    <form onSubmit={handleAddAdminEmail} className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Mail className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                        <input
+                          type="email"
+                          required
+                          placeholder={t.adminManageEmailPlaceholder}
+                          value={newAdminEmail}
+                          onChange={(e) => setNewAdminEmail(e.target.value)}
+                          className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-xs text-slate-800"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        className="bg-slate-950 hover:bg-slate-800 text-white p-2.5 rounded-xl transition cursor-pointer text-xs font-bold shrink-0 flex items-center justify-center"
+                        title={t.adminManageAddBtn}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </form>
+
+                    {/* Feedback alerts */}
+                    {adminActionError && (
+                      <div className="p-2 bg-red-50 text-red-600 text-[11px] rounded-lg">
+                        {adminActionError}
+                      </div>
+                    )}
+                    {adminActionSuccess && (
+                      <div className="p-2 bg-emerald-50 text-emerald-600 text-[11px] rounded-lg flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>{adminActionSuccess}</span>
+                      </div>
+                    )}
+
+                    {/* Authorized administrators list */}
+                    <div className="space-y-2 pt-1">
+                      <h4 className="text-[11px] font-black uppercase text-slate-400 tracking-wider">
+                        {t.adminManageListTitle}
+                      </h4>
+
+                      <div className="max-h-52 overflow-y-auto pr-1 space-y-1.5 custom-scrollbar">
+                        {/* 1. Chief Administrator (cannot delete) */}
+                        <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                            <span className="font-semibold text-slate-700">sonjoyseo@gmail.com</span>
+                          </div>
+                          <span className="text-[9px] font-bold text-slate-400 bg-slate-200/50 px-2 py-0.5 rounded-sm uppercase tracking-tight">
+                            {t.adminManageChiefLabel}
+                          </span>
+                        </div>
+
+                        {/* 2. Secondary Custom Admins */}
+                        {adminEmails.filter(email => email !== "sonjoyseo@gmail.com").map((email) => (
+                          <div key={email} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                              <span className="font-medium text-slate-600 truncate max-w-[130px] sm:max-w-[200px]" title={email}>{email}</span>
+                            </div>
+                            
+                            {confirmRevokeEmail === email ? (
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteAdminEmail(email)}
+                                  className="px-2 py-0.5 text-[9px] font-bold bg-rose-600 hover:bg-rose-750 text-white rounded-md transition cursor-pointer"
+                                >
+                                  {lang === "bn" ? "নিশ্চিত" : "Revoke"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmRevokeEmail(null)}
+                                  className="px-1.5 py-0.5 text-[9px] font-semibold bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md transition cursor-pointer"
+                                >
+                                  {lang === "bn" ? "বাদ" : "X"}
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmRevokeEmail(email)}
+                                className="p-1 rounded-md text-slate-400 hover:text-red-500 hover:bg-slate-100 transition cursor-pointer shrink-0"
+                                title={t.adminManageRevokeBtn}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+
+                        {adminEmails.filter(email => email !== "sonjoyseo@gmail.com").length === 0 && (
+                          <p className="text-[10px] text-slate-400 text-center py-2 italic font-medium">
+                            {t.adminManageEmptyList}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
+                )}
+                
+                {/* Campaign instructions guidelines card */}
+                <div className="bg-slate-900 text-slate-100 rounded-2xl p-6 shadow-sm border border-slate-800 space-y-4 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-8 opacity-5 text-4xl pointer-events-none font-bold select-none">
+                    ⚖️
+                  </div>
+                  <h3 className="text-sm font-bold text-yellow-400 flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-yellow-400" />
+                    {t.rulesTitle}
+                  </h3>
+                  <ul className="text-xs space-y-2.5 text-slate-300 list-inside leading-relaxed list-decimal">
+                    <li>{t.rulesDesc1}</li>
+                    <li>{t.rulesDesc2}</li>
+                    <li>{t.rulesDesc3}</li>
+                    <li>{t.rulesDesc4}</li>
+                  </ul>
                 </div>
-              )}
-              
-              {/* Campaign instructions guidelines card */}
-              <div className="bg-slate-900 text-slate-100 rounded-2xl p-6 shadow-sm border border-slate-800 space-y-4 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 opacity-5 text-4xl pointer-events-none font-bold select-none">
-                  ⚖️
+              </div>
+
+              {/* Split Section 2: Dashboard/Newsfeed listings and Analytics Column (Span 7) */}
+              <div className="lg:col-span-7">
+                <ReportDashboard 
+                  reports={reports} 
+                  isAdmin={isAdmin} 
+                  onRefresh={loadReportsData} 
+                  isRefreshing={isRefreshing}
+                  lang={lang}
+                />
+              </div>
+
+            </div>
+
+            {/* Banner with explanations and automated interval countdown representation - Relocated to the bottom */}
+            <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-slate-500/0 rounded-2xl border border-emerald-500/10 p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mt-8">
+              <div className="flex items-start gap-3.5">
+                <span className="p-2.5 bg-emerald-100 rounded-xl text-emerald-600 mt-0.5 shrink-0">
+                  <Info className="w-5 h-5" />
+                </span>
+                <div className="space-y-1">
+                  <h2 className="text-sm font-black text-slate-800">{t.howItWorksTitle}</h2>
+                  <p className="text-xs text-slate-600 leading-relaxed max-w-2xl">
+                    {t.howItWorksDesc}
+                  </p>
                 </div>
-                <h3 className="text-sm font-bold text-yellow-400 flex items-center gap-2">
-                  <ShieldAlert className="w-4 h-4 text-yellow-400" />
-                  {t.rulesTitle}
-                </h3>
-                <ul className="text-xs space-y-2.5 text-slate-300 list-inside leading-relaxed list-decimal">
-                  <li>{t.rulesDesc1}</li>
-                  <li>{t.rulesDesc2}</li>
-                  <li>{t.rulesDesc3}</li>
-                  <li>{t.rulesDesc4}</li>
-                </ul>
+              </div>
+              <div className="flex flex-col items-start md:items-end justify-center shrink-0 bg-white/40 md:bg-transparent p-3 md:p-0 rounded-xl border border-dotted border-slate-200 md:border-0">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
+                  <Database className="w-3.5 h-3.5 text-emerald-500" />
+                  {t.autoRefreshText}
+                </div>
+                <span className="text-[12px] font-black text-emerald-600 font-mono mt-0.5">
+                  {formatCountdown(secondsUntilUpdate)}
+                </span>
               </div>
             </div>
-
-            {/* Split Section 2: Dashboard/Newsfeed listings and Analytics Column (Span 7) */}
-            <div className="lg:col-span-7">
-              <ReportDashboard 
-                reports={reports} 
-                isAdmin={isAdmin} 
-                onRefresh={loadReportsData} 
-                isRefreshing={isRefreshing}
-                lang={lang}
-              />
-            </div>
-
-          </div>
+          </>
         )}
       </main>
 

@@ -86,6 +86,7 @@ export default function ReportDashboard({ reports, isAdmin, onRefresh, isRefresh
   
   // Toggle states for visible categorised report lists in newsfeed
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+  const [activeCategoryFeedTab, setActiveCategoryFeedTab] = useState<string | null>(null);
 
   // Localized numerals formatter
   const fmtNum = (num: number | string): string => {
@@ -430,11 +431,211 @@ export default function ReportDashboard({ reports, isAdmin, onRefresh, isRefresh
 
       {/* ===================== GUEST BOARD / ADMIN LIVE NEWSFEED ===================== */}
       {(!isAdmin || adminTab === "newsfeed") ? (
-        <div className="space-y-6">
+        <div className="space-y-8">
           
-          {/* Quick positive campaign campaign-wide high contrast metrics cards */}
+          {/* 1. Public newsfeed heading list - MOVED TO THE TOP */}
+          <div className="space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-md sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-emerald-500 animate-pulse" />
+                {t.newsfeedTitle}
+              </h3>
+              <p className="text-xs text-slate-400 max-w-2xl">
+                {t.newsfeedDesc}
+              </p>
+            </div>
+
+            {Object.keys(groupedReports).length === 0 ? (
+              <div className="py-20 text-center text-slate-400 bg-white rounded-2xl border border-slate-100 shadow-3xs">
+                <CheckCircle className="w-14 h-14 mx-auto mb-4 opacity-50 text-emerald-500" />
+                <p className="text-sm font-bold text-slate-700">{t.emptyNewsfeedTitle}</p>
+                <p className="text-xs mt-1 text-slate-400">{t.emptyNewsfeedDesc}</p>
+              </div>
+            ) : (() => {
+              const activeTabName = activeCategoryFeedTab || (categoryStatsList[0]?.name || null);
+              const activeCategoryReports = groupedReports[activeTabName || ""] || [];
+              const activeCategoryIndex = categoryStatsList.findIndex(c => c.name === activeTabName);
+              const activeColor = COLORS[activeCategoryIndex !== -1 ? activeCategoryIndex % COLORS.length : 0];
+
+              return (
+                <div className="space-y-5">
+                  {/* Category Buttons Row */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-3 pt-1 select-none no-scrollbar custom-scrollbar">
+                    {categoryStatsList.map((cat, idx) => {
+                      const isActive = activeTabName === cat.name;
+                      const dotColor = COLORS[idx % COLORS.length];
+                      return (
+                        <button
+                          key={cat.name}
+                          onClick={() => setActiveCategoryFeedTab(cat.name)}
+                          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shrink-0 flex items-center gap-2 border shadow-2xs ${
+                            isActive 
+                              ? "bg-slate-900 border-slate-900 text-white font-black scale-[1.01] ring-2 ring-emerald-500/20" 
+                              : "bg-white hover:bg-slate-550/10 text-slate-600 hover:text-slate-900 border-slate-200/80 hover:border-slate-300"
+                          }`}
+                          style={{ contentVisibility: "auto" }}
+                        >
+                          <span 
+                            className="w-2.5 h-2.5 rounded-full shrink-0" 
+                            style={{ backgroundColor: isActive ? "#10b981" : dotColor }} 
+                          />
+                          <span className="truncate max-w-[140px] sm:max-w-none">{cat.name}</span>
+                          <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black ${
+                            isActive ? "bg-emerald-500 text-white" : "bg-slate-100 text-slate-500"
+                          }`}>
+                            {fmtNum(cat.count)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Active Category Listing Area */}
+                  {activeCategoryReports.length === 0 ? (
+                    <div className="py-12 text-center text-slate-400 bg-white rounded-2xl border border-slate-100 shadow-3xs">
+                      <p className="text-xs font-bold text-slate-500">{lang === "bn" ? "কোনো পোস্ট পাওয়া যায়নি" : "No posts found"}</p>
+                    </div>
+                  ) : (
+                    <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-3xs hover:border-slate-200/80 transition-all duration-300">
+                      
+                      {/* Active category details banner */}
+                      <div className="px-5 py-4 bg-slate-50/70 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: activeColor }} />
+                          <span className="font-bold text-slate-800 text-sm sm:text-md">
+                            {activeTabName}
+                          </span>
+                        </div>
+                        <div className="text-xs font-bold text-slate-500 bg-slate-200/50 px-2.5 py-1 rounded-lg">
+                          {lang === "bn" ? "মোট পোস্ট:" : "Total posts:"} <span className="text-emerald-700 font-extrabold">{fmtNum(activeCategoryReports.length)}</span>
+                        </div>
+                      </div>
+
+                      {/* Active category's actual lists */}
+                      <div className="divide-y divide-slate-100">
+                        {activeCategoryReports.map((report, idx) => (
+                          <div 
+                            key={report.id}
+                            className="p-5 hover:bg-slate-50/30 transition flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center"
+                          >
+                            <div className="space-y-2 flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-800 text-slate-100 text-[10px] font-black font-mono">
+                                  {fmtNum(idx + 1)}
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-wide">
+                                  <Calendar className="w-3.5 h-3.5" />
+                                  {t.timeAgoLabel} {formatTimeAgo(report.timestamp)}
+                                </span>
+                              </div>
+
+                              {/* Notes section */}
+                              {report.description && report.description.trim() ? (
+                                <div className="bg-slate-50/60 p-3 rounded-xl border border-slate-100/50 max-w-2xl">
+                                  <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider mb-1">
+                                    {t.descriptionLabel}
+                                  </span>
+                                  <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-semibold">
+                                    {report.description}
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="text-[11px] text-slate-400 italic font-medium">
+                                  {lang === "bn" ? "• কোনো অতিরিক্ত ডেসক্রিপশন দেওয়া হয়নি।" : "• No additional notes provided."}
+                                </div>
+                              )}
+
+                              {/* Cutout facebook post link */}
+                              <div className="text-[11px] text-slate-400 truncate font-mono bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 max-w-full inline-block select-all" title="Source link">
+                                {report.facebookLink}
+                              </div>
+                            </div>
+
+                            {/* Click actions block */}
+                            <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto shrink-0 border-t sm:border-0 pt-3 sm:pt-0 border-slate-100 gap-3">
+                              <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1 text-emerald-700 font-bold text-xs">
+                                <MousePointer className="w-3.5 h-3.5 shrink-0" />
+                                <span>{fmtNum(report.clickCount || 0)} {t.visitCounterText}</span>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {/* Copy Link */}
+                                <button
+                                  onClick={() => report.id && handleCopyLink(report.facebookLink, report.id)}
+                                  className="p-2 text-slate-500 hover:text-emerald-700 bg-slate-50 hover:bg-emerald-100/30 border border-slate-200/50 rounded-xl transition cursor-pointer inline-flex items-center gap-1 text-xs font-bold"
+                                >
+                                  {copiedId === report.id ? (
+                                    <>
+                                      <ClipboardCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                      <span className="text-emerald-600 font-bold">{t.copiedSuccess}</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Copy className="w-3.5 h-3.5" />
+                                      <span>{t.copyBtn}</span>
+                                    </>
+                                  )}
+                                </button>
+
+                                {/* Facebook Visit direct link */}
+                                <a
+                                  href={report.facebookLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={() => report.id && handleLinkClick(report.id)}
+                                  className="px-3 py-2 text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition inline-flex items-center gap-1 cursor-pointer text-xs font-bold shadow-xs flex-nowrap"
+                                >
+                                  <span className="whitespace-nowrap">{t.viewPostLabel}</span>
+                                  <ExternalLink className="w-3 h-3 shrink-0" />
+                                </a>
+
+                                {/* Admin Delete */}
+                                {isAdmin && (
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    {confirmDeleteId === report.id ? (
+                                      <>
+                                        <button
+                                          onClick={() => report.id && triggerDelete(report.id)}
+                                          disabled={deletingId === report.id}
+                                          className="px-2.5 py-1.5 text-xs font-bold bg-rose-600 hover:bg-rose-750 text-white rounded-xl transition cursor-pointer"
+                                        >
+                                          {deletingId === report.id ? "..." : (lang === "bn" ? "নিশ্চিত" : "Sure?")}
+                                        </button>
+                                        <button
+                                          onClick={() => setConfirmDeleteId(null)}
+                                          className="px-2.5 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition cursor-pointer"
+                                        >
+                                          {lang === "bn" ? "না" : "x"}
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <button
+                                        onClick={() => report.id && setConfirmDeleteId(report.id)}
+                                        className="px-3 py-2 text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-200 hover:border-rose-600 rounded-xl transition cursor-pointer inline-flex items-center gap-1 text-xs font-bold shrink-0 shadow-3xs duration-200"
+                                        title={lang === "bn" ? "পোস্টটি মুছে ফেলুন" : "Remove post"}
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                                        <span>{lang === "bn" ? "ডিলিট" : "Delete"}</span>
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
+          <div className="border-t border-slate-100 my-6 pt-6"></div>
+
+          {/* 2. Quick positive campaign campaign-wide high contrast metrics cards - MOVED TO THE BOTTOM */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            
             <div className="bg-gradient-to-br from-emerald-500/5 to-emerald-500/0 border border-slate-100 rounded-2xl p-5 shadow-3xs relative overflow-hidden flex items-center gap-4">
               <div className="w-11 h-11 rounded-xl bg-emerald-100 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0">
                 <ShieldCheck className="w-6 h-6" />
@@ -470,10 +671,9 @@ export default function ReportDashboard({ reports, isAdmin, onRefresh, isRefresh
                 </span>
               </div>
             </div>
-
           </div>
 
-          {/* Interactive Live Activity Charts section */}
+          {/* 3. Interactive Live Activity Charts section - MOVED TO THE BOTTOM */}
           {reports.length > 0 && (
             <div className="bg-white border border-slate-100 rounded-2xl p-5 sm:p-6 shadow-3xs">
               <h4 className="text-sm font-black text-slate-700 mb-4 flex items-center gap-2">
@@ -511,189 +711,9 @@ export default function ReportDashboard({ reports, isAdmin, onRefresh, isRefresh
             </div>
           )}
 
-          {/* Public newsfeed heading list */}
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <h3 className="text-md sm:text-lg font-bold text-slate-800 flex items-center gap-2">
-                <Activity className="w-5 h-5 text-emerald-500 animate-pulse" />
-                {t.newsfeedTitle}
-              </h3>
-              <p className="text-xs text-slate-400 max-w-2xl">
-                {t.newsfeedDesc}
-              </p>
-            </div>
-
-            {Object.keys(groupedReports).length === 0 ? (
-              <div className="py-20 text-center text-slate-400 bg-white rounded-2xl border border-slate-100 shadow-3xs">
-                <CheckCircle className="w-14 h-14 mx-auto mb-4 opacity-50 text-emerald-500" />
-                <p className="text-sm font-bold text-slate-700">{t.emptyNewsfeedTitle}</p>
-                <p className="text-xs mt-1 text-slate-400">{t.emptyNewsfeedDesc}</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {(Object.entries(groupedReports) as [string, FacebookReport[]][]).map(([catName, list], catIdx) => {
-                  const isExpanded = expandedCategories[catName] !== false; // expanded/true by default
-                  const totalClicksInCat = list.reduce((s, r) => s + (r.clickCount || 0), 0);
-
-                  return (
-                    <div 
-                      key={catName} 
-                      className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-3xs hover:border-slate-200 transition-all duration-300"
-                    >
-                      {/* Interactive category header */}
-                      <button
-                        onClick={() => toggleCategoryExpand(catName)}
-                        className="w-full px-5 py-4 bg-slate-50/50 hover:bg-slate-50 flex items-center justify-between gap-3 text-left border-b border-slate-100 transition duration-150 cursor-pointer"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span 
-                            className="w-3 h-3 rounded-full shrink-0" 
-                            style={{ backgroundColor: COLORS[catIdx % COLORS.length] }}
-                          />
-                          <div>
-                            <span className="font-bold text-slate-800 text-sm sm:text-md">
-                              {catName}
-                            </span>
-                            <span className="text-[10px] sm:text-xs font-semibold text-slate-400 block sm:inline sm:ml-3">
-                              ({fmtNum(list.length)} {t.reportCountUnit} • {t.visitCountUnit}: {fmtNum(totalClicksInCat)})
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          {isExpanded ? (
-                            <ChevronUp className="w-4 h-4 text-slate-400" />
-                          ) : (
-                            <ChevronDown className="w-4 h-4 text-slate-400" />
-                          )}
-                        </div>
-                      </button>
-
-                      {/* Serial lists underneath */}
-                      {isExpanded && (
-                        <div className="divide-y divide-slate-100 bg-white">
-                          {list.map((report, idx) => (
-                            <div 
-                              key={report.id}
-                              className="p-5 hover:bg-emerald-50/5/10 transition flex flex-col sm:flex-row justify-between gap-4 items-start sm:items-center"
-                            >
-                              <div className="space-y-2 flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-800 text-slate-100 text-[10px] font-black font-mono">
-                                    {fmtNum(idx + 1)}
-                                  </span>
-                                  <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase tracking-wide">
-                                    <Calendar className="w-3.5 h-3.5" />
-                                    {t.timeAgoLabel} {formatTimeAgo(report.timestamp)}
-                                  </span>
-                                </div>
-
-                                {/* Notes section (Can be empty because notes is optional now!) */}
-                                {report.description && report.description.trim() ? (
-                                  <div className="bg-slate-50/60 p-3 rounded-xl border border-slate-100/50 max-w-2xl">
-                                    <span className="text-[9px] uppercase font-bold text-slate-400 block tracking-wider mb-1">
-                                      {t.descriptionLabel}
-                                    </span>
-                                    <p className="text-xs sm:text-sm text-slate-700 leading-relaxed font-semibold">
-                                      {report.description}
-                                    </p>
-                                  </div>
-                                ) : (
-                                  <div className="text-[11px] text-slate-400 italic font-medium">
-                                    {lang === "bn" ? "• কোনো অতিরিক্ত ডেসক্রিপশন দেওয়া হয়নি।" : "• No additional notes provided."}
-                                  </div>
-                                )}
-
-                                {/* Cutout actual Facebook post link */}
-                                <div className="text-[11px] text-slate-400 truncate font-mono bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 max-w-full inline-block select-all" title="Source link">
-                                  {report.facebookLink}
-                                </div>
-                              </div>
-
-                              {/* Click actions block */}
-                              <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto shrink-0 border-t sm:border-0 pt-3 sm:pt-0 border-slate-100 gap-3">
-                                <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-100 rounded-lg px-2.5 py-1 text-emerald-700 font-bold text-xs">
-                                  <MousePointer className="w-3.5 h-3.5" />
-                                  <span>{fmtNum(report.clickCount || 0)} {t.visitCounterText}</span>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                  {/* Copy Link wrapper */}
-                                  <button
-                                    onClick={() => report.id && handleCopyLink(report.facebookLink, report.id)}
-                                    className="p-2 text-slate-500 hover:text-emerald-700 bg-slate-50 hover:bg-emerald-100/30 border border-slate-200/50 rounded-xl transition cursor-pointer inline-flex items-center gap-1 text-xs font-bold"
-                                  >
-                                    {copiedId === report.id ? (
-                                      <>
-                                        <ClipboardCheck className="w-3.5 h-3.5 text-emerald-600" />
-                                        <span className="text-emerald-600 font-bold">{t.copiedSuccess}</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Copy className="w-3.5 h-3.5" />
-                                        <span>{t.copyBtn}</span>
-                                      </>
-                                    )}
-                                  </button>
-
-                                  {/* Facebook Visit direct link */}
-                                  <a
-                                    href={report.facebookLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={() => report.id && handleLinkClick(report.id)}
-                                    className="px-3 py-2 text-white bg-slate-900 hover:bg-slate-800 rounded-xl transition inline-flex items-center gap-1 cursor-pointer text-xs font-bold shadow-xs flex-nowrap"
-                                  >
-                                    <span className="whitespace-nowrap">{t.viewPostLabel}</span>
-                                    <ExternalLink className="w-3 h-3 shrink-0" />
-                                  </a>
-
-                                  {/* Quick direct Live delete for admins */}
-                                  {isAdmin && (
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                      {confirmDeleteId === report.id ? (
-                                        <>
-                                          <button
-                                            onClick={() => report.id && triggerDelete(report.id)}
-                                            disabled={deletingId === report.id}
-                                            className="px-2.5 py-1.5 text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition cursor-pointer"
-                                          >
-                                            {deletingId === report.id ? "..." : (lang === "bn" ? "নিশ্চিত" : "Sure?")}
-                                          </button>
-                                          <button
-                                            onClick={() => setConfirmDeleteId(null)}
-                                            className="px-2.5 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition cursor-pointer"
-                                          >
-                                            {lang === "bn" ? "না" : "x"}
-                                          </button>
-                                        </>
-                                      ) : (
-                                        <button
-                                          onClick={() => report.id && setConfirmDeleteId(report.id)}
-                                          className="px-3 py-2 text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-200 hover:border-rose-600 rounded-xl transition cursor-pointer inline-flex items-center gap-1 text-xs font-bold shrink-0 shadow-3xs duration-200"
-                                          title={lang === "bn" ? "পোস্টটি মুছে ফেলুন" : "Remove post"}
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                                          <span>{lang === "bn" ? "ডিলিট" : "Delete"}</span>
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
         </div>
       ) : (
+        // ===================== ADMIN CONSOLE AREA =====================
         // ===================== ADMIN CONSOLE AREA =====================
         <div className="space-y-6">
           <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 flex items-center justify-between shadow-2xs">
