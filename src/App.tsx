@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { 
   fetchReports, 
   FacebookReport, 
@@ -566,12 +566,18 @@ function CountdownTimer({ onTriggerRefresh, resetTrigger, lang, t }: CountdownTi
     setSecondsUntilUpdate(120);
   }, [resetTrigger]);
 
+  // Keep a mutable reference to the latest callback to prevent resetting intervals
+  const refreshRef = useRef(onTriggerRefresh);
+  useEffect(() => {
+    refreshRef.current = onTriggerRefresh;
+  }, [onTriggerRefresh]);
+
   // Handle continuous background ticking with single-instance interval state
   useEffect(() => {
     const timer = setInterval(() => {
       setSecondsUntilUpdate((prev) => {
         if (prev <= 1) {
-          onTriggerRefresh(); // Trigger background silent updates
+          refreshRef.current(); // Trigger background silent updates via ref containing latest callback
           return 120;
         }
         return prev - 1;
@@ -579,7 +585,7 @@ function CountdownTimer({ onTriggerRefresh, resetTrigger, lang, t }: CountdownTi
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [onTriggerRefresh]);
+  }, []);
 
   return (
     <div className="flex flex-col items-start md:items-end justify-center shrink-0 bg-white/40 md:bg-transparent p-3 md:p-0 rounded-xl border border-dotted border-slate-200 md:border-0 font-sans">
