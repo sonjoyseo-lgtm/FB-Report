@@ -27,12 +27,100 @@
         }
       },
       "required": ["facebookLink", "category", "description", "timestamp", "clickCount"]
+    },
+    "BotLog": {
+      "title": "BotLog",
+      "description": "A search engine crawler or spider robot visitation activity log",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The classified crawler name (e.g., GOOGLEBOT, BINGBOT)"
+        },
+        "userAgent": {
+          "type": "string",
+          "description": "Full crawler browser User-Agent identifier string"
+        },
+        "timestamp": {
+          "type": "integer",
+          "description": "Scan access millisecond timestamp"
+        },
+        "url": {
+          "type": "string",
+          "description": "The scanned/scraped page URL path"
+        },
+        "category": {
+          "type": "string",
+          "description": "The campaign category page current when scanned"
+        }
+      },
+      "required": ["name", "userAgent", "timestamp", "url"]
+    },
+    "LiveOnlineUser": {
+      "title": "LiveOnlineUser",
+      "description": "Active user heartbeat timestamp mapping",
+      "type": "object",
+      "properties": {
+        "lastSeen": {
+          "type": "integer",
+          "description": "Last active heartbeat millisecond timestamp"
+        }
+      },
+      "required": ["lastSeen"]
+    },
+    "VisitorStatsCounters": {
+      "title": "VisitorStatsCounters",
+      "description": "Aggregated visitor totals",
+      "type": "object",
+      "properties": {
+        "uniqueUsers": {
+          "type": "integer",
+          "description": "Total unique real-user visitor count"
+        },
+        "totalVisits": {
+          "type": "integer",
+          "description": "Total visitation instance counter"
+        }
+      },
+      "required": ["uniqueUsers", "totalVisits"]
+    },
+    "AnalyticsConfig": {
+      "title": "AnalyticsConfig",
+      "description": "Google Analytics and Tag Manager campaign credentials config",
+      "type": "object",
+      "properties": {
+        "gtmId": {
+          "type": "string",
+          "description": "GTM container ID code"
+        },
+        "gaId": {
+          "type": "string",
+          "description": "GA Measurement ID code"
+        }
+      },
+      "required": ["gtmId", "gaId"]
     }
   },
   "firestore": {
     "/reports/{reportId}": {
       "schema": "FacebookReport",
       "description": "Collection of bad Facebook posts reported by users"
+    },
+    "/bot_logs/{logId}": {
+      "schema": "BotLog",
+      "description": "Collection of search spiders logging events"
+    },
+    "/online_users/{visitorId}": {
+      "schema": "LiveOnlineUser",
+      "description": "Real-time active user sessions tracker mapping"
+    },
+    "/counters/visitor_analytics": {
+      "schema": "VisitorStatsCounters",
+      "description": "Central dynamic user counter"
+    },
+    "/settings/analytics_config": {
+      "schema": "AnalyticsConfig",
+      "description": "Central metrics telemetry integrations panel"
     }
   }
 }

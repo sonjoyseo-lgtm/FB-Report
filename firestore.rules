@@ -1,12 +1,36 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // 1. Reports Collection
     match /reports/{reportId} {
       allow read, create, update: if true;
-      allow delete: if true; // allow delete for admin actions
+      allow delete: if true;
     }
+    
+    // 2. Administrators permissions lookup mapping
     match /admins/{adminId} {
       allow read, write: if true;
+    }
+
+    // 3. Automated spider crawl detection logs
+    match /bot_logs/{logId} {
+      allow read, create: if true;
+      allow write, delete: if true;
+    }
+
+    // 4. Client real-time user online heartbeats tracker
+    match /online_users/{visitorId} {
+      allow read, write, create, update: if true;
+    }
+
+    // 5. Total counts & session metrics document counters
+    match /counters/{counterId} {
+      allow read, write, create, update: if true;
+    }
+
+    // 6. Google Analytics and Tag templates settings panel
+    match /settings/{settingsId} {
+      allow read, write, create, update: if true;
     }
   }
 }

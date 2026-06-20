@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { FacebookReport, incrementClickCount, deleteReport, updateReport, updateCategoryGlobally } from "../lib/firebase";
+import { FacebookReport, incrementClickCount, deleteReport, updateReport, updateCategoryGlobally, fetchBotLogs, BotLog, VisitorStats } from "../lib/firebase";
 import { translations } from "../lib/translations";
 import { 
   BarChart, 
@@ -48,6 +48,9 @@ interface ReportDashboardProps {
   onRefresh: () => void;
   isRefreshing: boolean;
   lang: "bn" | "en";
+  analyticsConfig?: { gtmId: string; gaId: string };
+  onUpdateAnalyticsConfig?: (config: { gtmId: string; gaId: string }) => Promise<void>;
+  visitorStats?: VisitorStats;
 }
 
 // Warm, hopeful positive campaign matching colors
@@ -62,16 +65,40 @@ const COLORS = [
   "#14b8a6"  // Teal
 ];
 
-export default function ReportDashboard({ reports, isAdmin, onRefresh, isRefreshing, lang }: ReportDashboardProps) {
+export default function ReportDashboard({ 
+  reports, 
+  isAdmin, 
+  onRefresh, 
+  isRefreshing, 
+  lang,
+  analyticsConfig,
+  onUpdateAnalyticsConfig,
+  visitorStats
+}: ReportDashboardProps) {
   const t = translations[lang];
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [adminTab, setAdminTab] = useState<"table" | "newsfeed" | "categories" | "maintenance">("table");
+  const [adminTab, setAdminTab] = useState<"table" | "newsfeed" | "categories" | "maintenance" | "analytics">("table");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   
+  // Custom states for Google Tag Manager & Analytics settings config
+  const [gtmInput, setGtmInput] = useState(analyticsConfig?.gtmId || "");
+  const [gaInput, setGaInput] = useState(analyticsConfig?.gaId || "");
+  const [isSavingAnalytics, setIsSavingAnalytics] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState("");
+  const [analyticsSuccess, setAnalyticsSuccess] = useState("");
+
+  // Sync state if async config loads from Firebase
+  React.useEffect(() => {
+    if (analyticsConfig) {
+      setGtmInput(analyticsConfig.gtmId || "");
+      setGaInput(analyticsConfig.gaId || "");
+    }
+  }, [analyticsConfig]);
+
   // Category manager states
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -87,6 +114,42 @@ export default function ReportDashboard({ reports, isAdmin, onRefresh, isRefresh
   // Toggle states for visible categorised report lists in newsfeed
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
   const [activeCategoryFeedTab, setActiveCategoryFeedTab] = useState<string | null>(null);
+  const [copiedCategoryLink, setCopiedCategoryLink] = useState(false);
+
+  // Parse URL search parameters on Mount or Reports update and preselect category permalink
+  React.useEffect(() => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const catParam = searchParams.get("category");
+      let initialCat = catParam;
+
+      if (!initialCat && window.location.hash) {
+        const hashMatch = window.location.hash.match(/^#category\/(.+)$/);
+        if (hashMatch && hashMatch[1]) {
+          initialCat = decodeURIComponent(hashMatch[1]);
+        }
+      }
+
+      if (initialCat) {
+        const decoded = initialCat.trim();
+        setActiveCategoryFeedTab(decoded);
+        setSelectedCategory(decoded);
+      }
+    } catch (e) {
+      console.warn("URL Deep Link parsing failed safely: ", e);
+    }
+  }, [reports]);
+
+  // Method to change tab feed and update URL context
+  const handleSelectFeedTab = (catName: string) => {
+    setActiveCategoryFeedTab(catName);
+    try {
+      const encodedCat = encodeURIComponent(catName);
+      window.history.replaceState(null, "", `?category=${encodedCat}`);
+    } catch (e) {
+      console.warn("Unable to update browser URL state safely: ", e);
+    }
+  };
 
   // Localized numerals formatter
   const fmtNum = (num: number | string): string => {
@@ -425,6 +488,17 @@ export default function ReportDashboard({ reports, isAdmin, onRefresh, isRefresh
               <Sliders className="w-3.5 h-3.5" />
               <span>{lang === "bn" ? "রক্ষণাবেক্ষণ ও ব্যাকআপ" : "Maintenance & Tools"}</span>
             </button>
+            <button
+              onClick={() => setAdminTab("analytics")}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                adminTab === "analytics"
+                  ? "bg-rose-600 text-white shadow-xs"
+                  : "text-slate-400 hover:text-white hover:bg-slate-800"
+              }`}
+            >
+              <Settings className="w-3.5 h-3.5" />
+              <span>{lang === "bn" ? "ট্যাগ ও অ্যানালিটিক্স" : "Tags & Analytics"}</span>
+            </button>
           </div>
         </div>
       )}
@@ -467,7 +541,7 @@ export default function ReportDashboard({ reports, isAdmin, onRefresh, isRefresh
                       return (
                         <button
                           key={cat.name}
-                          onClick={() => setActiveCategoryFeedTab(cat.name)}
+                          onClick={() => handleSelectFeedTab(cat.name)}
                           className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer shrink-0 flex items-center gap-2 border shadow-2xs ${
                             isActive 
                               ? "bg-slate-900 border-slate-900 text-white font-black scale-[1.01] ring-2 ring-emerald-500/20" 
@@ -506,8 +580,35 @@ export default function ReportDashboard({ reports, isAdmin, onRefresh, isRefresh
                             {activeTabName}
                           </span>
                         </div>
-                        <div className="text-xs font-bold text-slate-500 bg-slate-200/50 px-2.5 py-1 rounded-lg">
-                          {lang === "bn" ? "মোট পোস্ট:" : "Total posts:"} <span className="text-emerald-700 font-extrabold">{fmtNum(activeCategoryReports.length)}</span>
+                        <div className="flex items-center gap-2">
+                          {/* Copy Category Share Permalink */}
+                          <button
+                            onClick={() => {
+                              if (activeTabName) {
+                                const directUrl = window.location.origin + window.location.pathname + "?category=" + encodeURIComponent(activeTabName);
+                                navigator.clipboard.writeText(directUrl);
+                                setCopiedCategoryLink(true);
+                                setTimeout(() => setCopiedCategoryLink(false), 2000);
+                              }
+                            }}
+                            className="px-2.5 py-1.5 text-[11px] font-bold text-slate-700 bg-white hover:bg-rose-50 hover:text-rose-600 border border-slate-200 hover:border-rose-200 rounded-lg transition-all duration-200 flex items-center gap-1.5 shadow-2xs cursor-pointer select-none"
+                          >
+                            {copiedCategoryLink ? (
+                              <>
+                                <ClipboardCheck className="w-3.5 h-3.5 text-emerald-600" />
+                                <span className="text-emerald-600 font-bold">{t.copyCategoryLinkSuccess}</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>{t.copyCategoryLinkBtn}</span>
+                              </>
+                            )}
+                          </button>
+
+                          <div className="text-xs font-bold text-slate-500 bg-slate-200/50 px-2.5 py-1 rounded-lg">
+                            {lang === "bn" ? "মোট পোস্ট:" : "Total posts:"} <span className="text-emerald-700 font-extrabold">{fmtNum(activeCategoryReports.length)}</span>
+                          </div>
                         </div>
                       </div>
 
@@ -1142,6 +1243,151 @@ export default function ReportDashboard({ reports, isAdmin, onRefresh, isRefresh
                 </div>
 
               </div>
+            </div>
+          )}
+
+          {adminTab === "analytics" && (
+            <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-3xs space-y-6">
+              <div className="border-b border-slate-100 pb-4">
+                <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                  <Settings className="w-4.5 h-4.5 text-rose-500" />
+                  <span>{t.analyticsConfigTitle}</span>
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {lang === "bn" 
+                    ? "গুগল ট্যাগ ম্যানেজার কন্টেইনার আইডি এবং গুগল এনালিটিক্স মেজারমেন্ট আইডি সেটআপ করুন। এটি লাইভ ভিজিটরদের গতিবিধি ও ক্যাম্পেইনে অ্যাক্টিভিটি ট্র্যাক করতে সাহায্য করবে।" 
+                    : "Integrate Google Tag Manager & Google Analytics scripts dynamically to stream real-time visitors logs."}
+                </p>
+              </div>
+
+              {analyticsSuccess && (
+                <div className="p-3 bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs rounded-xl font-bold flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{analyticsSuccess}</span>
+                </div>
+              )}
+              {analyticsError && (
+                <div className="p-3 bg-rose-50 border border-rose-100 text-rose-800 text-xs rounded-xl font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{analyticsError}</span>
+                </div>
+              )}
+
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                setAnalyticsError("");
+                setAnalyticsSuccess("");
+                setIsSavingAnalytics(true);
+                try {
+                  if (onUpdateAnalyticsConfig) {
+                    await onUpdateAnalyticsConfig({
+                      gtmId: gtmInput.trim(),
+                      gaId: gaInput.trim()
+                    });
+                    setAnalyticsSuccess(t.analyticsSuccessMsg);
+                    setTimeout(() => setAnalyticsSuccess(""), 4000);
+                  }
+                } catch (err) {
+                  setAnalyticsError(t.analyticsErrorMsg);
+                } finally {
+                  setIsSavingAnalytics(false);
+                }
+              }} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      {t.gtmLabel}
+                    </label>
+                    <input
+                      type="text"
+                      value={gtmInput}
+                      onChange={(e) => setGtmInput(e.target.value)}
+                      placeholder="e.g. GTM-WKBDS7Y"
+                      className="px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500 bg-white w-full"
+                    />
+                    <span className="text-[10px] text-slate-400 block font-medium">
+                      {lang === "bn" ? "ফেসবুক ইভেন্ট ও ট্যাগ ট্র্যাকিংয়ের জন্য ট্যাগ ম্যানেজার প্রবেশ করান。" : "Main container identifier loaded for analytics hooks."}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-slate-700 block">
+                      {t.gaLabel}
+                    </label>
+                    <input
+                      type="text"
+                      value={gaInput}
+                      onChange={(e) => setGaInput(e.target.value)}
+                      placeholder="e.g. G-H2KLSPQ9"
+                      className="px-3.5 py-2.5 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-1 focus:ring-rose-500 bg-white w-full"
+                    />
+                    <span className="text-[10px] text-slate-400 block font-medium">
+                      {lang === "bn" ? "গুগল এনালিটিক্স ৪ ট্র্যাকিং কোড যাতে সরাসরি ডাটা স্ট্রিম তৈরি করতে পারে।" : "Google Analytics (GA4) measurement key is used for tracking dashboards."}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Cross-Check Live Verification Status */}
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 space-y-3">
+                  <h4 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    <span>{lang === "bn" ? "সরাসরি ক্রস-চেক ও ট্র্যাকিং স্ট্যাটাস" : "Live Cross-Check & Tracking Verification"}</span>
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    {/* GTM validation */}
+                    <div className="p-3 bg-white border border-slate-100 rounded-lg flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold block">GOOGLE TAG MANAGER</span>
+                        <span className="font-mono text-xs text-slate-800 font-semibold">{gtmInput.trim() || "N/A"}</span>
+                      </div>
+                      <div>
+                        {gtmInput && gtmInput.trim().toUpperCase().startsWith("GTM-") ? (
+                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md flex items-center gap-1">
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            {lang === "bn" ? "সক্রিয় রয়েছে (Validated)" : "Active & Validated"}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold rounded-md">
+                            {lang === "bn" ? "নিষ্ক্রিয় / সেটআপ নেই" : "No Active Key"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {/* GA validation */}
+                    <div className="p-3 bg-white border border-slate-100 rounded-lg flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-bold block">GOOGLE ANALYTICS</span>
+                        <span className="font-mono text-xs text-slate-800 font-semibold">{gaInput.trim() || "N/A"}</span>
+                      </div>
+                      <div>
+                        {gaInput && gaInput.trim().toUpperCase().startsWith("G-") ? (
+                          <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-md flex items-center gap-1">
+                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            {lang === "bn" ? "সক্রিয় রয়েছে (Validated)" : "Active & Validated"}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-amber-50 text-amber-700 text-[10px] font-bold rounded-md">
+                            {lang === "bn" ? "নিষ্ক্রিয় / সেটআপ নেই" : "No Active Key"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    disabled={isSavingAnalytics}
+                    className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400 text-white rounded-xl text-xs font-bold cursor-pointer transition flex items-center gap-2"
+                  >
+                    {isSavingAnalytics ? (
+                      <span className="inline-block w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                    ) : null}
+                    <span>{t.analyticsSaveBtn}</span>
+                  </button>
+                </div>
+              </form>
             </div>
           )}
         </div>

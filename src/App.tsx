@@ -4,8 +4,21 @@ import {
   FacebookReport, 
   fetchAdminEmails, 
   addAdminEmail, 
-  deleteAdminEmail 
+  deleteAdminEmail,
+  fetchAnalyticsConfig,
+  saveAnalyticsConfig,
+  AnalyticsConfig,
+  fetchLiveAnalytics,
+  VisitorStats,
+  fetchBotLogs,
+  BotLog,
+  subscribeReports,
+  subscribeBotLogs,
+  subscribeLiveAnalytics,
+  subscribeAnalyticsConfig
 } from "./lib/firebase";
+import { detectAndTrackVisitor } from "./lib/visitorTracker";
+import { injectGoogleAnalytics, injectGoogleTagManager } from "./lib/analytics";
 import { translations } from "./lib/translations";
 import ReportForm from "./components/ReportForm";
 import ReportDashboard from "./components/ReportDashboard";
@@ -44,6 +57,7 @@ export default function App() {
 
   // Custom admin login state
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showBotLogs, setShowBotLogs] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -58,28 +72,90 @@ export default function App() {
   const [adminActionSuccess, setAdminActionSuccess] = useState("");
   const [confirmRevokeEmail, setConfirmRevokeEmail] = useState<string | null>(null);
 
+  // Google Analytics & Google Tag Manager tracking settings
+  const [analyticsConfig, setAnalyticsConfig] = useState<AnalyticsConfig>({ gtmId: "", gaId: "" });
+
+  // Live real-time user metrics state 
+  const [visitorStats, setVisitorStats] = useState<VisitorStats>({ uniqueUsers: 0, totalVisits: 0, activeOnline: 1 });
+
+  // Bot activity crawler log history state
+  const [botLogs, setBotLogs] = useState<BotLog[]>([]);
+
+  // Localized numerals formatter for visitor stats
+  const fmtNum = (num: number | string): string => {
+    if (lang === "en") return num.toString();
+    const banglaDigits: { [key: string]: string } = {
+      '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯'
+    };
+    return num.toString().split('').map(digit => banglaDigits[digit] || digit).join('');
+  };
+
   // Helper function to easily load data from firestore on demand 
   const loadReportsData = async (silent = false) => {
     if (!silent) {
       setIsRefreshing(true);
     }
     try {
-      const data = await fetchReports();
-      setReports(data);
       const emails = await fetchAdminEmails();
       setAdminEmails(emails);
     } catch (err) {
-      console.error("Error loading reports: ", err);
+      console.error("Error loading admin emails list: ", err);
     } finally {
       setLoading(false);
       setIsRefreshing(false);
-      setLastFetched(Date.now()); // Reset the background polling countdown via trigger
+      setLastFetched(Date.now());
     }
   };
 
-  // 1. On Mount: Fetch initial data
+  // Reactively inject script tags whenever Google Analytics or Google Tag Manager configuration changes in Firestore (Real-time Sync)
+  useEffect(() => {
+    if (analyticsConfig.gaId) {
+      injectGoogleAnalytics(analyticsConfig.gaId);
+    }
+    if (analyticsConfig.gtmId) {
+      injectGoogleTagManager(analyticsConfig.gtmId);
+    }
+  }, [analyticsConfig.gaId, analyticsConfig.gtmId]);
+
+  // 1. On Mount: Fetch initial data with live visitor & bot crawler tracking
   useEffect(() => {
     loadReportsData();
+
+    // Trigger visitor tracking check (with bot vs human classification & writing)
+    detectAndTrackVisitor().then((res) => {
+      if (res.isBot) {
+        console.log(`[Crawler Traffic Engine]: Submitting Bot visit detail to cloud: ${res.botName}`);
+      }
+    });
+
+    // Subscribe to real-time Reports
+    const unsubscribeReports = subscribeReports((updatedReports) => {
+      setReports(updatedReports);
+      setLoading(false);
+    });
+
+    // Subscribe to real-time search crawler / Bot Activity logs
+    const unsubscribeBotLogs = subscribeBotLogs((updatedLogs) => {
+      setBotLogs(updatedLogs);
+    });
+
+    // Subscribe to real-time Visitor Metrics and active online counts
+    const unsubscribeLiveStats = subscribeLiveAnalytics((updatedStats) => {
+      setVisitorStats(updatedStats);
+    });
+
+    // Subscribe to real-time analytics GTM & GA settings configuration
+    const unsubscribeAnalyticsSettings = subscribeAnalyticsConfig((updatedConfig) => {
+      setAnalyticsConfig(updatedConfig);
+    });
+
+    // Clean up all real-time listeners on unmount
+    return () => {
+      unsubscribeReports();
+      unsubscribeBotLogs();
+      unsubscribeLiveStats();
+      unsubscribeAnalyticsSettings();
+    };
   }, []);
 
   // Admin login flow
@@ -144,6 +220,18 @@ export default function App() {
       setTimeout(() => setAdminActionSuccess(""), 4000);
     } catch (error) {
       setAdminActionError(lang === "bn" ? "বাতিল করা যায়নি।" : "Failed to revoke access.");
+    }
+  };
+
+  const handleUpdateAnalyticsConfig = async (newConfig: AnalyticsConfig) => {
+    try {
+      await saveAnalyticsConfig(newConfig);
+      setAnalyticsConfig(newConfig);
+      if (newConfig.gaId) injectGoogleAnalytics(newConfig.gaId);
+      if (newConfig.gtmId) injectGoogleTagManager(newConfig.gtmId);
+    } catch (error) {
+      console.error("Failed to update and inject analytics configurations:", error);
+      throw error;
     }
   };
 
@@ -234,6 +322,77 @@ export default function App() {
           </div>
         ) : (
           <>
+            {/* Real-time Analytics Widget (Hero/Header Placement) */}
+            <motion.div 
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white border border-slate-200/80 rounded-2xl p-4 sm:p-5 shadow-3xs grid grid-cols-1 md:grid-cols-3 gap-6 relative overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-1.5 h-full bg-rose-600"></div>
+              
+              {/* Stat 1: Online users */}
+              <div className="flex items-center gap-4 pl-2">
+                <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl relative shrink-0">
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></span>
+                  <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-emerald-500 rounded-full"></span>
+                  <Globe className="w-5 h-5 shrink-0" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block leading-none mb-1">
+                    {t.activeUsersLabel}
+                  </span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="font-mono text-xl sm:text-2xl font-black text-slate-800 leading-none">
+                      {fmtNum(visitorStats.activeOnline)}
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-md">
+                      Live Pulse
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stat 2: Total Visits */}
+              <div className="flex items-center gap-4 border-t md:border-t-0 md:border-x border-slate-100 md:px-6">
+                <div className="p-3 bg-rose-50 text-rose-600 rounded-xl shrink-0">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block leading-none mb-1">
+                    {t.totalVisitsLabel}
+                  </span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="font-mono text-xl sm:text-2xl font-black text-slate-800 leading-none">
+                      {fmtNum(visitorStats.totalVisits)}
+                    </span>
+                    <span className="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md">
+                      logs stream
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stat 3: Unique Visitors */}
+              <div className="flex items-center gap-4 border-t md:border-t-0 border-slate-100 md:pl-6">
+                <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block leading-none mb-1">
+                    {t.uniqueUsersLabel}
+                  </span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="font-mono text-xl sm:text-2xl font-black text-slate-800 leading-none">
+                      {fmtNum(visitorStats.uniqueUsers)}
+                    </span>
+                    <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md">
+                      Real Ips
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               
               {/* Split Section 1: Form Column (Span 5) - INFORMATION INPUT SYSTEM with thick left border */}
@@ -385,6 +544,9 @@ export default function App() {
                   onRefresh={loadReportsData} 
                   isRefreshing={isRefreshing}
                   lang={lang}
+                  analyticsConfig={analyticsConfig}
+                  onUpdateAnalyticsConfig={handleUpdateAnalyticsConfig}
+                  visitorStats={visitorStats}
                 />
               </div>
 
@@ -415,38 +577,132 @@ export default function App() {
       </main>
 
       {/* 4. Global Footer with Admin Login Action Toggle */}
-      <footer className="bg-white border-t border-slate-100 py-6 mt-12 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-400 text-xs text-center sm:text-left">
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 font-medium">
-            <span>{t.footerCopyright}</span>
+      <footer className="bg-white border-t border-slate-100 py-8 mt-12 z-10 font-sans">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+          
+          {/* Collapsible Web Crawler and Bot Activity Traffic Monitor */}
+          <div className="border border-slate-200/60 rounded-2xl bg-slate-50/50 overflow-hidden shadow-3xs">
+            <button
+              onClick={() => setShowBotLogs(prev => !prev)}
+              className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors select-none cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="p-1.5 bg-slate-900 text-slate-100 rounded-lg shrink-0">
+                  <Database className="w-4 h-4" />
+                </span>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-extrabold text-slate-800 flex items-center gap-1.5">
+                    {t.botTrackerTitle}
+                    <span className="text-[10px] font-mono shrink-0 px-2 py-0.5 bg-rose-100 text-rose-700 font-extrabold rounded-full">
+                      {fmtNum(botLogs.length)} Logged
+                    </span>
+                  </h4>
+                  <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium hidden sm:block mt-0.5">
+                    {t.botTrackerDesc}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-500 bg-white border px-3 py-1.5 rounded-xl shadow-3xs">
+                <span>{showBotLogs ? (lang === "bn" ? "লগ বন্ধ করুন" : "Collapse Monitor") : (lang === "bn" ? "মনিটর দেখুন" : "Expand Monitor")}</span>
+                <span className={`transition-transform duration-200 ${showBotLogs ? "rotate-180" : ""}`}>▼</span>
+              </div>
+            </button>
+
+            {showBotLogs && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="border-t border-slate-200/60 bg-white"
+              >
+                {botLogs.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 bg-white rounded-b-2xl">
+                    <p className="text-xs font-bold leading-relaxed max-w-md mx-auto px-4">
+                      {t.botTrackerEmpty}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs text-slate-600 border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-100">
+                          <th className="px-6 py-3.5">{t.botColName}</th>
+                          <th className="px-6 py-3.5">{t.botColTime}</th>
+                          <th className="px-6 py-3.5">{t.botColPage}</th>
+                          <th className="px-6 py-3.5">{t.botColAgent}</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {botLogs.map((log) => {
+                          const logTime = new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + " (" + new Date(log.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' }) + ")";
+                          const mapBanglaBotName: Record<string, string> = {
+                            "GOOGLEBOT": "গুগল ইনডেক্সার (Googlebot)",
+                            "BINGBOT": "মাইক্রোসফট বিং (Bingbot)",
+                            "POSTMAN": "পোস্টম্যান টেস্ট এজেন্ট (Postman)",
+                            "FACEBOOKEXTERNALHIT": "ফেসবুক সোশাল প্রিভিউ বট"
+                          };
+                          const displayName = lang === "bn" ? (mapBanglaBotName[log.name] || `${log.name} ক্রলার`) : log.name;
+
+                          return (
+                            <tr key={log.id} className="hover:bg-slate-50/50 transition duration-150">
+                              <td className="px-6 py-4 font-extrabold text-slate-800">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[10px] font-black uppercase font-mono rounded-lg bg-slate-900 text-slate-100">
+                                  {displayName}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 font-mono text-slate-500">
+                                {lang === "bn" ? fmtNum(logTime) : logTime}
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className="font-mono text-xs text-rose-600 font-bold bg-rose-50 border border-rose-100 px-2 py-1 rounded-md block truncate max-w-[240px]" title={log.url}>
+                                  {log.url}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-[10px] text-slate-400 font-mono truncate max-w-[320px]" title={log.userAgent}>
+                                {log.userAgent}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </motion.div>
+            )}
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            {!isAdmin ? (
-              <button
-                id="footer-admin-login-btn"
-                onClick={() => {
-                  setLoginError("");
-                  setShowLoginModal(true);
-                }}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 transition-all font-bold cursor-pointer"
-              >
-                <LogIn className="w-3.5 h-3.5 text-slate-500" />
-                {t.adminLoginBtn}
-              </button>
-            ) : (
-              <button
-                onClick={handleLogout}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200 transition-all font-bold cursor-pointer"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                {t.adminLogoutBtn}
-              </button>
-            )}
-            
-            <div className="flex items-center gap-1 text-[11px] text-slate-400">
-              <span>{t.footerVibeSignature}</span>
-              <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 animate-pulse shrink-0" />
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-slate-400 text-xs text-center sm:text-left pt-2">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 font-medium">
+              <span>{t.footerCopyright}</span>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              {!isAdmin ? (
+                <button
+                  id="footer-admin-login-btn"
+                  onClick={() => {
+                    setLoginError("");
+                    setShowLoginModal(true);
+                  }}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 transition-all font-bold cursor-pointer"
+                >
+                  <LogIn className="w-3.5 h-3.5 text-slate-500" />
+                  {t.adminLoginBtn}
+                </button>
+              ) : (
+                <button
+                  onClick={handleLogout}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 border border-red-200 transition-all font-bold cursor-pointer"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  {t.adminLogoutBtn}
+                </button>
+              )}
+              
+              <div className="flex items-center gap-1 text-[11px] text-slate-400 font-semibold">
+                <span>{t.footerVibeSignature}</span>
+                <Heart className="w-3.5 h-3.5 text-red-500 fill-red-500 animate-pulse shrink-0" />
+              </div>
             </div>
           </div>
         </div>

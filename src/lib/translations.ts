@@ -86,6 +86,26 @@ export interface TranslationSchema {
   deleteReportText: string;
   backToPublicView: string;
   viewPostLabel: string;
+  analyticsConfigTitle: string;
+  gtmLabel: string;
+  gaLabel: string;
+  analyticsSaveBtn: string;
+  analyticsSuccessMsg: string;
+  analyticsErrorMsg: string;
+  analyticsActiveLabel: string;
+  analyticsInactiveLabel: string;
+  copyCategoryLinkBtn: string;
+  copyCategoryLinkSuccess: string;
+  uniqueUsersLabel: string;
+  totalVisitsLabel: string;
+  activeUsersLabel: string;
+  botTrackerTitle: string;
+  botTrackerDesc: string;
+  botTrackerEmpty: string;
+  botColName: string;
+  botColTime: string;
+  botColPage: string;
+  botColAgent: string;
 }
 
 export const translations: Record<"bn" | "en", TranslationSchema> = {
@@ -174,7 +194,27 @@ export const translations: Record<"bn" | "en", TranslationSchema> = {
     searchPlaceholder: "লিংক বা বিবরণ অনুসন্ধান করুন...",
     deleteReportText: "মুছে ফেলুন",
     backToPublicView: "পাবলিক ভিউতে ফিরে যান",
-    viewPostLabel: "পোস্ট দেখুন"
+    viewPostLabel: "পোস্ট দেখুন",
+    analyticsConfigTitle: "গুগল এনালিটিক্স এবং গুগল ট্যাগ ম্যানেজার সেটিংস",
+    gtmLabel: "Google Tag Manager কন্টেইনার আইডি (GTM ID)",
+    gaLabel: "Google Analytics মেজারমেন্ট আইডি (Measurement ID)",
+    analyticsSaveBtn: "সেটিংস সংরক্ষণ করুন",
+    analyticsSuccessMsg: "এনালিটিক্স স্ক্রিপ্ট সেটিংস সফলভাবে আপডেট করা হয়েছে!",
+    analyticsErrorMsg: "ডাটাবেজ সংযোগ সংক্রান্ত জটিলতা। সেটিংস সংরক্ষণ করা যায়নি।",
+    analyticsActiveLabel: "ট্র্যাকিং কোড সফলভাবে সক্রিয় ও ট্র্যাক করছে!",
+    analyticsInactiveLabel: "কোনো সক্রিয় ট্র্যাকিং কোড নেই (সেটআপ করা হয়নি)",
+    copyCategoryLinkBtn: "ক্যাটাগরি লিংক কপি করুন",
+    copyCategoryLinkSuccess: "ক্যাটাগরি শেয়ার লিংক কপি করা হয়েছে!",
+    uniqueUsersLabel: "ইউনিক রিয়েল ইউজার",
+    totalVisitsLabel: "মোট ভিজিট সংখ্যা",
+    activeUsersLabel: "বর্তমানে লাইভ অ্যাক্টিভ",
+    botTrackerTitle: "ক্রলার ও থার্ড-পার্টি সার্চ বটের আগমনী মনিটর",
+    botTrackerDesc: "কোন কোন কোম্পানি বা সার্চ ইঞ্জিনের বট কখন রিয়েল-টাইমে পেজগুলো স্ক্যান বা এক্সেস করেছে তার লাইভ হিস্ট্রি লগের বিবরণ।",
+    botTrackerEmpty: "এখনো কোনো বট বা ক্রলার অ্যাক্টিভিটি ট্র্যাক হয়নি। সাধারণ ভিজিটর ট্র্যাকিং চলমান রয়েছে।",
+    botColName: "বট/কোম্পানির নাম",
+    botColTime: "স্ক্যান বা পরিদর্শনের সময়",
+    botColPage: "এক্সেস করা লিংক/পেজ",
+    botColAgent: "সম্পূর্ণ ইউজার এজেন্ট সিগনেচার"
   },
   en: {
     appTitle: "Civic Social Media Campaign & Safety Hub",
@@ -261,6 +301,26 @@ export const translations: Record<"bn" | "en", TranslationSchema> = {
     searchPlaceholder: "Search links, categories, or notes...",
     deleteReportText: "Remove flag",
     backToPublicView: "Switch back to Visitor board",
-    viewPostLabel: "Explore Post"
+    viewPostLabel: "Explore Post",
+    analyticsConfigTitle: "Google Analytics & Google Tag Manager Settings",
+    gtmLabel: "Google Tag Manager Container ID (GTM-XXXX)",
+    gaLabel: "Google Analytics Measurement ID (G-XXXX)",
+    analyticsSaveBtn: "Save Settings",
+    analyticsSuccessMsg: "Analytics script configurations updated successfully!",
+    analyticsErrorMsg: "Database connection issue. Could not save configurations.",
+    analyticsActiveLabel: "Tracking code successfully active & running!",
+    analyticsInactiveLabel: "No active tracking code (Not Configured)",
+    copyCategoryLinkBtn: "Copy Category Share Link",
+    copyCategoryLinkSuccess: "Category share link copied successfully!",
+    uniqueUsersLabel: "Unique Real Users",
+    totalVisitsLabel: "Total Page Visits",
+    activeUsersLabel: "Active Online Now",
+    botTrackerTitle: "Crawler & Third-Party Search Bots Activity Logs",
+    botTrackerDesc: "Live real-time monitoring of search crawler agents (like Googlebot, Bingbot, etc.) scanning and indexing campaign categories.",
+    botTrackerEmpty: "No automation crawler or spider bots registered yet. Real visitor loops are being monitored.",
+    botColName: "Bot Agent Name",
+    botColTime: "Scan Access Time",
+    botColPage: "Scanned Page URI",
+    botColAgent: "Complete User Agent Signature"
   }
 };
