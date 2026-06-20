@@ -38,20 +38,24 @@ export function injectGoogleTagManager(gtmId: string) {
     return;
   }
 
-  // Inject GTM Head script
+  // Inject GTM Head script with absolute parent checks
   const script = document.createElement("script");
   script.innerHTML = `
     (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
     j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;if(f&&f.parentNode){f.parentNode.insertBefore(j,f);}else{d.head.appendChild(j);}
     })(window,document,'script','dataLayer','${id}');
   `;
   document.head.appendChild(script);
 
   // Inject GTM Noscript iframe
-  const noscript = document.createElement("noscript");
-  noscript.innerHTML = `<iframe src="https://www.googletagmanager.com/ns.html?id=${id}" height="0" width="0" style="display:none;visibility:hidden"></iframe>`;
-  document.body.appendChild(noscript);
+  try {
+    const noscript = document.createElement("noscript");
+    noscript.innerHTML = `<iframe src="https://www.googletagmanager.com/ns.html?id=${id}" height="0" width="0" style="display:none;visibility:hidden"></iframe>`;
+    document.body.appendChild(noscript);
+  } catch (err) {
+    console.warn("Could not inject GTM noscript iframe to body yet: ", err);
+  }
   console.log(`[Analytics] Google Tag Manager loaded: ${id}`);
 }

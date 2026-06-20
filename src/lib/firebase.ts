@@ -260,10 +260,17 @@ export async function fetchAnalyticsConfig(): Promise<AnalyticsConfig> {
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       const data = docSnap.data();
-      return {
-        gtmId: data.gtmId || "",
-        gaId: data.gaId || ""
+      const config = {
+        gtmId: (data.gtmId || "").trim(),
+        gaId: (data.gaId || "").trim()
       };
+      try {
+        localStorage.setItem("analytics_gtm_id", config.gtmId);
+        localStorage.setItem("analytics_ga_id", config.gaId);
+      } catch (e) {
+        console.warn("Storage write error in fetchAnalyticsConfig: ", e);
+      }
+      return config;
     }
   } catch (err) {
     console.error("Error fetching analytics config from Firestore: ", err);
@@ -280,6 +287,12 @@ export async function saveAnalyticsConfig(config: AnalyticsConfig): Promise<void
       gaId: config.gaId.trim(),
       updatedAt: Date.now()
     });
+    try {
+      localStorage.setItem("analytics_gtm_id", config.gtmId.trim());
+      localStorage.setItem("analytics_ga_id", config.gaId.trim());
+    } catch (e) {
+      console.warn("Storage write error in saveAnalyticsConfig: ", e);
+    }
   } catch (err) {
     console.error("Error saving analytics config in Firestore: ", err);
     throw err;
@@ -518,10 +531,18 @@ export function subscribeAnalyticsConfig(onUpdate: (config: AnalyticsConfig) => 
   return onSnapshot(docRef, (docSnap) => {
     if (docSnap.exists()) {
       const data = docSnap.data();
-      onUpdate({
-        gtmId: data.gtmId || "",
-        gaId: data.gaId || ""
-      });
+      const config = {
+        gtmId: (data.gtmId || "").trim(),
+        gaId: (data.gaId || "").trim()
+      };
+      // Cache settings for instant loading on cold start
+      try {
+        localStorage.setItem("analytics_gtm_id", config.gtmId);
+        localStorage.setItem("analytics_ga_id", config.gaId);
+      } catch (e) {
+        console.warn("Storage write error in subscribeAnalyticsConfig: ", e);
+      }
+      onUpdate(config);
     } else {
       onUpdate({ gtmId: "", gaId: "" });
     }
